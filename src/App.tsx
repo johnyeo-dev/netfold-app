@@ -33,7 +33,11 @@ function makeShape(id: string) {
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const shapeRef = useRef<THREE.Mesh | null>(null);
+
   const [shapeId, setShapeId] = useState("cube");
+  const [tab, setTab] = useState<"3d" | "net" | "quiz">("3d");
+  const [autoSpin, setAutoSpin] = useState(true);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -52,6 +56,7 @@ export default function App() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    mount.innerHTML = "";
     mount.appendChild(renderer.domElement);
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -59,27 +64,51 @@ export default function App() {
     scene.add(light);
 
     const shape = makeShape(shapeId);
+    shapeRef.current = shape;
     scene.add(shape);
 
-    let animationId = 0;
+    let frame = 0;
 
     const animate = () => {
-      animationId = requestAnimationFrame(animate);
-      shape.rotation.y += 0.01;
+      frame = requestAnimationFrame(animate);
+      if (autoSpin && shapeRef.current) {
+        shapeRef.current.rotation.y += 0.01;
+      }
       renderer.render(scene, camera);
     };
 
     animate();
 
     return () => {
-      cancelAnimationFrame(animationId);
-      mount.removeChild(renderer.domElement);
+      cancelAnimationFrame(frame);
       renderer.dispose();
     };
-  }, [shapeId]);
+  }, [shapeId, autoSpin]);
+
+  const rotateLeft = () => {
+    if (shapeRef.current) shapeRef.current.rotation.y -= 0.4;
+  };
+
+  const rotateRight = () => {
+    if (shapeRef.current) shapeRef.current.rotation.y += 0.4;
+  };
+
+  const reset = () => {
+    if (shapeRef.current) shapeRef.current.rotation.set(0, 0, 0);
+  };
 
   return (
-    <div style={{ height: "100vh", background: "#0f172a", color: "white" }}>
+    <div style={{ height: "100vh", background: "#0f172a", color: "white", display: "flex", flexDirection: "column" }}>
+      
+      {/* HEADER */}
+      <div style={{ padding: 10, borderBottom: "1px solid #1e293b" }}>
+        <h2 style={{ margin: 0 }}>🔷 NetFold</h2>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          PSLE Maths · 3D Nets Explorer
+        </div>
+      </div>
+
+      {/* SHAPE SELECTOR */}
       <div style={{ padding: 10 }}>
         {SHAPES.map((s) => (
           <button
@@ -87,11 +116,12 @@ export default function App() {
             onClick={() => setShapeId(s.id)}
             style={{
               marginRight: 8,
-              marginBottom: 8,
               padding: "6px 10px",
               borderRadius: 10,
               border: "none",
               cursor: "pointer",
+              background: shapeId === s.id ? "#3b82f6" : "#1e293b",
+              color: "white",
             }}
           >
             {s.label}
@@ -99,7 +129,52 @@ export default function App() {
         ))}
       </div>
 
-      <div ref={mountRef} style={{ width: "100%", height: "90%" }} />
+      {/* TABS */}
+      <div style={{ padding: 10 }}>
+        <button onClick={() => setTab("3d")} style={{ marginRight: 8 }}>
+          🔮 3D View
+        </button>
+        <button onClick={() => setTab("net")} style={{ marginRight: 8 }}>
+          📄 Net
+        </button>
+        <button onClick={() => setTab("quiz")}>
+          🧠 Quiz
+        </button>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ flex: 1, position: "relative" }}>
+        {tab === "3d" && (
+          <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+        )}
+
+        {tab === "net" && (
+          <div style={{ padding: 20 }}>
+            <h3>Net of {shapeId}</h3>
+            <p>This is where your net visualization will go.</p>
+          </div>
+        )}
+
+        {tab === "quiz" && (
+          <div style={{ padding: 20 }}>
+            <h3>Quiz Mode</h3>
+            <p>Which net forms a {shapeId}?</p>
+            <p>(Quiz UI placeholder)</p>
+          </div>
+        )}
+      </div>
+
+      {/* CONTROLS */}
+      {tab === "3d" && (
+        <div style={{ padding: 10, display: "flex", justifyContent: "center", gap: 10 }}>
+          <button onClick={rotateLeft}>◀ Rotate</button>
+          <button onClick={reset}>Reset</button>
+          <button onClick={rotateRight}>Rotate ▶</button>
+          <button onClick={() => setAutoSpin(!autoSpin)}>
+            {autoSpin ? "Pause Spin" : "Auto Spin"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
