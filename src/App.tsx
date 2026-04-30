@@ -259,7 +259,7 @@ export default function App() {
     scene.background=new THREE.Color(0x0f172a);
     sceneRef.current=scene;
     const cam=new THREE.PerspectiveCamera(45,W/H,0.1,100);
-    cam.position.set(0,3,7); camRef.current=cam;
+    cam.position.set(0,1.5,7); cam.lookAt(0,0,0); camRef.current=cam;
     scene.add(new THREE.AmbientLight(0xffffff,0.5));
     const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(6,10,8); scene.add(dl);
     const dl2=new THREE.DirectionalLight(0x88ccff,0.3); dl2.position.set(-5,-3,-5); scene.add(dl2);
@@ -347,7 +347,7 @@ export default function App() {
   const zOut=()=>{if(camRef.current)camRef.current.position.z=Math.min(14,camRef.current.position.z+0.8);};
   const reset=()=>{
     if(groupRef.current){groupRef.current.rotation.set(0,0,0);groupRef.current.position.set(0,0,0);}
-    if(camRef.current)camRef.current.position.set(0,3,7);autoRot.current=true;};
+    if(camRef.current){camRef.current.position.set(0,1.5,7);camRef.current.lookAt(0,0,0);}autoRot.current=true;};
 
   const quiz=QUIZ[shapeId]||QUIZ.cube;
   const compType=quiz.component;
