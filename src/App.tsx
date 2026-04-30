@@ -371,8 +371,12 @@ export default function App() {
         <div style={{fontSize:10,color:"#64748b"}}>PSLE Maths · 3D Nets Explorer</div></div>
       </div>
       {/* Shape selector */}
-      <div style={{overflowX:"auto",padding:"7px 10px",background:"#020617",display:"flex",gap:6,borderBottom:"1px solid #1e293b"}}>
-        {SHAPES.map(s=><Btn key={s.id} active={shapeId===s.id} label={s.label} onClick={()=>setShapeId(s.id)} accent={s.hex}/>)}
+      <div style={{padding:"8px 12px",background:"#020617",borderBottom:"1px solid #1e293b",display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:12,color:"#64748b",whiteSpace:"nowrap"}}>Shape:</span>
+        <select value={shapeId} onChange={e=>setShapeId(e.target.value)}
+          style={{flex:1,padding:"8px 12px",borderRadius:10,border:"1px solid #1e3a5f",background:"#1e293b",color:"#f1f5f9",fontSize:14,cursor:"pointer",outline:"none",appearance:"auto"}}>
+          {SHAPES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
       </div>
       {/* View tabs */}
       <div style={{display:"flex",justifyContent:"center",gap:10,padding:"7px 12px",background:"#020617",borderBottom:"1px solid #1e293b"}}>
