@@ -289,7 +289,7 @@ export default function App() {
     };
     const onTS=e=>{
       if(e.touches.length===2){pinch.current={on:true,dist:getTouchDist(e)};return;}
-      lt=e.touches[0];autoRot.current=false;
+      lt=e.touches[0]; autoRot.current=false;
     };
     const onTM=e=>{
       if(e.touches.length===2&&pinch.current.on){
@@ -297,9 +297,14 @@ export default function App() {
         if(camRef.current)camRef.current.position.z=Math.max(2.5,Math.min(14,camRef.current.position.z-(d-pinch.current.dist)*0.03));
         pinch.current.dist=d; return;
       }
-      if(!lt||!groupRef.current)return; const t=e.touches[0];
-      groupRef.current.rotation.y+=(t.clientX-lt.clientX)*0.012;
-      groupRef.current.rotation.x+=(t.clientY-lt.clientY)*0.012; lt=t;
+      if(!lt||!groupRef.current)return;
+      const t=e.touches[0];
+      const dx=t.clientX-lt.clientX, dy=t.clientY-lt.clientY;
+      // translate figure in camera-aligned XY plane
+      const scale=(camRef.current?camRef.current.position.z:7)*0.0018;
+      groupRef.current.position.x+=dx*scale;
+      groupRef.current.position.y-=dy*scale;
+      lt=t;
     };
     const onTE=()=>{pinch.current.on=false;};
     el.addEventListener("mousedown",onMD); window.addEventListener("mousemove",onMM);
@@ -332,7 +337,7 @@ export default function App() {
   useEffect(()=>{
     const sc=sceneRef.current; if(!sc) return;
     if(groupRef.current){sc.remove(groupRef.current);groupRef.current=null;}
-    const g=makeShape(shapeId); sc.add(g); groupRef.current=g; autoRot.current=true;
+    const g=makeShape(shapeId); sc.add(g); groupRef.current=g; autoRot.current=true; g.position.set(0,0,0);
     setQSel(null); setQReveal(false);
   },[shapeId]);
 
@@ -340,7 +345,8 @@ export default function App() {
   const rotR=()=>{if(groupRef.current)groupRef.current.rotation.y+=0.4;autoRot.current=false;};
   const zIn=()=>{if(camRef.current)camRef.current.position.z=Math.max(2.5,camRef.current.position.z-0.8);};
   const zOut=()=>{if(camRef.current)camRef.current.position.z=Math.min(14,camRef.current.position.z+0.8);};
-  const reset=()=>{if(groupRef.current)groupRef.current.rotation.set(0,0,0);
+  const reset=()=>{
+    if(groupRef.current){groupRef.current.rotation.set(0,0,0);groupRef.current.position.set(0,0,0);}
     if(camRef.current)camRef.current.position.set(0,3,7);autoRot.current=true;};
 
   const quiz=QUIZ[shapeId]||QUIZ.cube;
@@ -373,6 +379,22 @@ export default function App() {
         {[["3d","🔮 3D View"],["net","📄 Net"],["quiz","🧠 Quiz"]].map(([t,l])=>(
           <Btn key={t} active={tab===t} label={l} onClick={()=>setTab(t)}/>))}
       </div>
+      {/* Controls — above figure */}
+      {tab==="3d"&&(
+        <div style={{background:"#020617",borderBottom:"1px solid #1e293b",padding:"8px 12px"}}>
+          <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap"}}>
+            <CtrlBtn label="◀" onClick={rotL} title="Rotate left (←)"/>
+            <CtrlBtn label="▲" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x-=0.4;autoRot.current=false;}}} title="Tilt up (↑)"/>
+            <CtrlBtn label="▼" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x+=0.4;autoRot.current=false;}}} title="Tilt down (↓)"/>
+            <CtrlBtn label="▶" onClick={rotR} title="Rotate right (→)"/>
+            <CtrlBtn label="＋" onClick={zIn} title="Zoom in (+)"/>
+            <CtrlBtn label="－" onClick={zOut} title="Zoom out (−)"/>
+            <CtrlBtn label="↺" onClick={reset} title="Reset view"/>
+            <button onClick={()=>autoRot.current=!autoRot.current} style={{padding:"10px 12px",borderRadius:16,border:"none",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:13,minHeight:44,touchAction:"manipulation"}}>⏸</button>
+          </div>
+          <div style={{textAlign:"center",fontSize:10,color:"#334155",marginTop:5}}>Arrow keys to rotate · +/− to zoom · mouse-drag to rotate · finger-drag to move</div>
+        </div>
+      )}
       {/* Main */}
       <div style={{flex:1,overflow:"hidden",position:"relative"}}>
         <div ref={mountRef} style={{width:"100%",height:"100%",display:tab==="3d"?"block":"none",cursor:"grab"}}/>
@@ -418,22 +440,6 @@ export default function App() {
           </div>
         )}
       </div>
-      {/* Controls */}
-      {tab==="3d"&&(
-        <div style={{background:"#020617",borderTop:"1px solid #1e293b",padding:"8px 12px"}}>
-          <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap"}}>
-            <CtrlBtn label="◀" onClick={rotL} title="Rotate left (←)"/>
-            <CtrlBtn label="▲" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x-=0.4;autoRot.current=false;}}} title="Tilt up (↑)"/>
-            <CtrlBtn label="▼" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x+=0.4;autoRot.current=false;}}} title="Tilt down (↓)"/>
-            <CtrlBtn label="▶" onClick={rotR} title="Rotate right (→)"/>
-            <CtrlBtn label="＋" onClick={zIn} title="Zoom in (+)"/>
-            <CtrlBtn label="－" onClick={zOut} title="Zoom out (−)"/>
-            <CtrlBtn label="↺" onClick={reset} title="Reset view"/>
-            <button onClick={()=>autoRot.current=!autoRot.current} style={{padding:"10px 12px",borderRadius:16,border:"none",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:13,minHeight:44,touchAction:"manipulation"}}>⏸</button>
-          </div>
-          <div style={{textAlign:"center",fontSize:10,color:"#334155",marginTop:5}}>Arrow keys to rotate · +/− to zoom · drag or pinch on touch</div>
-        </div>
-      )}
     </div>
   );
 }
