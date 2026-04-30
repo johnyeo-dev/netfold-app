@@ -241,6 +241,7 @@ export default function App() {
   const mountRef=useRef(null), rendRef=useRef(null), sceneRef=useRef(null),
     camRef=useRef(null), groupRef=useRef(null), rafRef=useRef(null);
   const drag=useRef({on:false,x:0,y:0}), autoRot=useRef(true);
+  const pinch=useRef({on:false,dist:0});
   const [shapeId,setShapeId]=useState("cube");
   const [tab,setTab]=useState("3d");
   const [qSel,setQSel]=useState<number | null>(null);
@@ -258,11 +259,11 @@ export default function App() {
     scene.background=new THREE.Color(0x0f172a);
     sceneRef.current=scene;
     const cam=new THREE.PerspectiveCamera(45,W/H,0.1,100);
-    cam.position.set(0,1.5,7); camRef.current=cam;
+    cam.position.set(0,3,7); camRef.current=cam;
     scene.add(new THREE.AmbientLight(0xffffff,0.5));
     const dl=new THREE.DirectionalLight(0xffffff,1); dl.position.set(6,10,8); scene.add(dl);
     const dl2=new THREE.DirectionalLight(0x88ccff,0.3); dl2.position.set(-5,-3,-5); scene.add(dl2);
-    const grid=new THREE.GridHelper(14,14,0x1e3a5f,0x1e293b); grid.position.y=-2.5; scene.add(grid);
+    const grid=new THREE.GridHelper(20,20,0x1e3a5f,0x1e293b); grid.position.y=-3; scene.add(grid);
     const g=makeShape("cube"); scene.add(g); groupRef.current=g;
     const onResize=()=>{
       const newW=el.clientWidth||400, newH=el.clientHeight||500;
@@ -282,19 +283,51 @@ export default function App() {
     const onMU=()=>drag.current.on=false;
     const onW=e=>{e.preventDefault();if(camRef.current)camRef.current.position.z=Math.max(2.5,Math.min(14,camRef.current.position.z+e.deltaY*0.012));};
     let lt=null;
-    const onTS=e=>{lt=e.touches[0];autoRot.current=false;};
-    const onTM=e=>{ if(!lt||!groupRef.current)return; const t=e.touches[0];
+    const getTouchDist=(e)=>{
+      const [a,b]=e.touches;
+      return Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+    };
+    const onTS=e=>{
+      if(e.touches.length===2){pinch.current={on:true,dist:getTouchDist(e)};return;}
+      lt=e.touches[0];autoRot.current=false;
+    };
+    const onTM=e=>{
+      if(e.touches.length===2&&pinch.current.on){
+        const d=getTouchDist(e);
+        if(camRef.current)camRef.current.position.z=Math.max(2.5,Math.min(14,camRef.current.position.z-(d-pinch.current.dist)*0.03));
+        pinch.current.dist=d; return;
+      }
+      if(!lt||!groupRef.current)return; const t=e.touches[0];
       groupRef.current.rotation.y+=(t.clientX-lt.clientX)*0.012;
-      groupRef.current.rotation.x+=(t.clientY-lt.clientY)*0.012; lt=t;};
+      groupRef.current.rotation.x+=(t.clientY-lt.clientY)*0.012; lt=t;
+    };
+    const onTE=()=>{pinch.current.on=false;};
     el.addEventListener("mousedown",onMD); window.addEventListener("mousemove",onMM);
     window.addEventListener("mouseup",onMU); window.addEventListener("resize",onResize); el.addEventListener("wheel",onW,{passive:false});
     el.addEventListener("touchstart",onTS,{passive:true}); el.addEventListener("touchmove",onTM,{passive:true});
+    el.addEventListener("touchend",onTE,{passive:true});
     return()=>{ cancelAnimationFrame(rafRef.current);
       el.removeEventListener("mousedown",onMD); window.removeEventListener("mousemove",onMM);
       window.removeEventListener("mouseup",onMU); window.removeEventListener("resize",onResize); el.removeEventListener("wheel",onW);
       el.removeEventListener("touchstart",onTS); el.removeEventListener("touchmove",onTM);
+      el.removeEventListener("touchend",onTE);
       renderer.dispose(); if(el.contains(renderer.domElement))el.removeChild(renderer.domElement);};
   },[]);
+
+  // Keyboard controls
+  useEffect(()=>{
+    if(tab!=="3d") return;
+    const onKey=(e:KeyboardEvent)=>{
+      if(e.key==="+"||e.key==="="){if(camRef.current)camRef.current.position.z=Math.max(2.5,camRef.current.position.z-0.6);}
+      else if(e.key==="-"){if(camRef.current)camRef.current.position.z=Math.min(14,camRef.current.position.z+0.6);}
+      else if(e.key==="ArrowLeft"){e.preventDefault();if(groupRef.current){groupRef.current.rotation.y-=0.15;autoRot.current=false;}}
+      else if(e.key==="ArrowRight"){e.preventDefault();if(groupRef.current){groupRef.current.rotation.y+=0.15;autoRot.current=false;}}
+      else if(e.key==="ArrowUp"){e.preventDefault();if(groupRef.current){groupRef.current.rotation.x-=0.15;autoRot.current=false;}}
+      else if(e.key==="ArrowDown"){e.preventDefault();if(groupRef.current){groupRef.current.rotation.x+=0.15;autoRot.current=false;}}
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[tab]);
 
   useEffect(()=>{
     const sc=sceneRef.current; if(!sc) return;
@@ -308,7 +341,7 @@ export default function App() {
   const zIn=()=>{if(camRef.current)camRef.current.position.z=Math.max(2.5,camRef.current.position.z-0.8);};
   const zOut=()=>{if(camRef.current)camRef.current.position.z=Math.min(14,camRef.current.position.z+0.8);};
   const reset=()=>{if(groupRef.current)groupRef.current.rotation.set(0,0,0);
-    if(camRef.current)camRef.current.position.set(0,1.5,7);autoRot.current=true;};
+    if(camRef.current)camRef.current.position.set(0,3,7);autoRot.current=true;};
 
   const quiz=QUIZ[shapeId]||QUIZ.cube;
   const compType=quiz.component;
@@ -316,15 +349,15 @@ export default function App() {
   const isNetValid=(i)=> compType ? COMPONENT_NETS[compType][i] : nets[i]?.valid;
 
   const Btn=({active,label,onClick,accent}:{active:boolean,label:string,onClick:()=>void,accent?:string})=>(
-    <button onClick={onClick} style={{padding:"6px 13px",borderRadius:20,border:`2px solid ${active?(accent||"#3b82f6"):"transparent"}`,
-      background:active?(accent||"#3b82f6"):"#1e293b",color:"#fff",cursor:"pointer",fontSize:12,
-      fontWeight:active?"bold":"normal",transition:"all 0.15s",whiteSpace:"nowrap"}}>{label}</button>);
-  const CtrlBtn=({label,onClick}:{label:string,onClick:()=>void})=>(
-    <button onClick={onClick} style={{padding:"7px 12px",borderRadius:16,border:"none",
-      background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:13}}>{label}</button>);
+    <button onClick={onClick} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${active?(accent||"#3b82f6"):"transparent"}`,
+      background:active?(accent||"#3b82f6"):"#1e293b",color:"#fff",cursor:"pointer",fontSize:13,
+      fontWeight:active?"bold":"normal",transition:"all 0.15s",whiteSpace:"nowrap",minHeight:40,touchAction:"manipulation"}}>{label}</button>);
+  const CtrlBtn=({label,onClick,title}:{label:string,onClick:()=>void,title?:string})=>(
+    <button onClick={onClick} title={title} style={{padding:"10px 14px",borderRadius:16,border:"none",
+      background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:15,minHeight:44,minWidth:44,touchAction:"manipulation"}}>{label}</button>);
 
   return(
-    <div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",display:"flex",flexDirection:"column",height:"100vh",background:"#0f172a",color:"#f1f5f9"}}>
+    <div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",display:"flex",flexDirection:"column",height:"100dvh",minHeight:"-webkit-fill-available",background:"#0f172a",color:"#f1f5f9"}}>
       {/* Header */}
       <div style={{padding:"9px 16px",background:"#020617",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid #1e293b"}}>
         <span style={{fontSize:22}}>🔷</span>
@@ -387,14 +420,18 @@ export default function App() {
       </div>
       {/* Controls */}
       {tab==="3d"&&(
-        <div style={{display:"flex",justifyContent:"center",gap:7,padding:"10px 14px",background:"#020617",flexWrap:"wrap",borderTop:"1px solid #1e293b"}}>
-          <CtrlBtn label="◀ Rotate" onClick={rotL}/>
-          <CtrlBtn label="🔍 +" onClick={zIn}/>
-          <CtrlBtn label="↺ Reset" onClick={reset}/>
-          <CtrlBtn label="🔍 −" onClick={zOut}/>
-          <CtrlBtn label="Rotate ▶" onClick={rotR}/>
-          <button onClick={()=>autoRot.current=!autoRot.current} style={{padding:"7px 12px",borderRadius:16,border:"none",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:12}}>⏸ Auto-spin</button>
-          <button onClick={()=>setShowLabels(v=>!v)} style={{padding:"7px 12px",borderRadius:16,border:"none",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:12}}>{showLabels?"🏷 Hide Labels":"🏷 Show Labels"}</button>
+        <div style={{background:"#020617",borderTop:"1px solid #1e293b",padding:"8px 12px"}}>
+          <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap"}}>
+            <CtrlBtn label="◀" onClick={rotL} title="Rotate left (←)"/>
+            <CtrlBtn label="▲" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x-=0.4;autoRot.current=false;}}} title="Tilt up (↑)"/>
+            <CtrlBtn label="▼" onClick={()=>{if(groupRef.current){groupRef.current.rotation.x+=0.4;autoRot.current=false;}}} title="Tilt down (↓)"/>
+            <CtrlBtn label="▶" onClick={rotR} title="Rotate right (→)"/>
+            <CtrlBtn label="＋" onClick={zIn} title="Zoom in (+)"/>
+            <CtrlBtn label="－" onClick={zOut} title="Zoom out (−)"/>
+            <CtrlBtn label="↺" onClick={reset} title="Reset view"/>
+            <button onClick={()=>autoRot.current=!autoRot.current} style={{padding:"10px 12px",borderRadius:16,border:"none",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:13,minHeight:44,touchAction:"manipulation"}}>⏸</button>
+          </div>
+          <div style={{textAlign:"center",fontSize:10,color:"#334155",marginTop:5}}>Arrow keys to rotate · +/− to zoom · drag or pinch on touch</div>
         </div>
       )}
     </div>
